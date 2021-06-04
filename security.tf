@@ -11,7 +11,7 @@ resource "aws_security_group_rule" "allow_http_inbound" {
   protocol    = "tcp"
   cidr_blocks = [var.whitelist_ip]
 
-  security_group_id = aws_security_group.lc_security_group.id
+  security_group_id = aws_security_group.hashistack.id
 }
 
 // == RPC ==
@@ -23,7 +23,7 @@ resource "aws_security_group_rule" "allow_rpc_inbound" {
   protocol    = "tcp"
   cidr_blocks = [var.whitelist_ip]
 
-  security_group_id = aws_security_group.lc_security_group.id
+  security_group_id = aws_security_group.hashistack.id
 }
 
 // == TCP ==
@@ -35,7 +35,7 @@ resource "aws_security_group_rule" "allow_serf_tcp_inbound" {
   protocol    = "tcp"
   cidr_blocks = [var.whitelist_ip]
 
-  security_group_id = aws_security_group.lc_security_group.id
+  security_group_id = aws_security_group.hashistack.id
 }
 
 // == UDP ==
@@ -47,7 +47,7 @@ resource "aws_security_group_rule" "allow_serf_udp_inbound" {
   protocol    = "udp"
   cidr_blocks = [var.whitelist_ip]
 
-  security_group_id = aws_security_group.lc_security_group.id
+  security_group_id = aws_security_group.hashistack.id
 }
 
 // == SSH ==
@@ -59,7 +59,7 @@ resource "aws_security_group_rule" "allow_ssh_inbound" {
   protocol    = "tcp"
   cidr_blocks = [var.whitelist_ip]
 
-  security_group_id = aws_security_group.lc_security_group.id
+  security_group_id = aws_security_group.hashistack.id
 }
 
 // == OUTBOUND ==
@@ -71,18 +71,18 @@ resource "aws_security_group_rule" "allow_all_outbound" {
   protocol    = "-1"
   cidr_blocks = ["0.0.0.0/0"]
 
-  security_group_id = aws_security_group.lc_security_group.id
+  security_group_id = aws_security_group.hashistack.id
 }
 
 // =====================
 // == SECURITY GROUPS ==
 // =====================
 
-resource "aws_security_group" "lc_security_group" {
+resource "aws_security_group" "hashistack" {
   name_prefix = var.cluster_name
   description = "Security group for the ${var.cluster_name} launch configuration"
   // if this is empty, does it set it up on the parent vpc
-  vpc_id      = var.vpc_id
+  vpc_id      = aws_vpc.hashistack.id
 }
 
 // =================

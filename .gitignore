@@ -1,5 +1,6 @@
 .tool-versions
 .terraform
+.terraform.lock.hcl
 terraform.tfstate
 terraform.tfstate.backup
 

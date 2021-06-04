@@ -63,18 +63,11 @@ variable "availability_zones" {
   type = map(any)
 
   default = {
-    "us-east-1" = ["us-east-1a"],
+    "us-east-1" = ["us-east-1a", "us-east-1b"],
     "us-west-2" = ["us-west-2a"]
   }
 
   description = "The id of the machine image (AMI) to use for the server. Ubuntu 20.04 LTS AMD 64"
-}
-
-// == SECURITY ==
-
-variable "vpc_id" {
-  type    = string
-  default = ""
 }
 
 // PORTS
