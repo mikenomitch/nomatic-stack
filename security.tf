@@ -113,23 +113,23 @@ data "aws_iam_policy_document" "assume-role" {
 }
 
 resource "aws_iam_policy" "auto-join" {
-  name        = "auto-join-${var.region}"
+  name        = "auto-join-${var.region}-${var.cluster_name}"
   description = "Allows Consul nodes to describe instances for joining."
   policy      =  data.aws_iam_policy_document.describe-instances.json
 }
 
 resource "aws_iam_role" "auto-join" {
-  name = "auto-join-${var.region}"
+  name = "auto-join-${var.region}-${var.cluster_name}"
   assume_role_policy = data.aws_iam_policy_document.assume-role.json
 }
 
 resource "aws_iam_policy_attachment" "auto-join" {
-  name       = "auto-join-${var.region}"
+  name       = "auto-join-${var.region}-${var.cluster_name}"
   roles      = [aws_iam_role.auto-join.name]
   policy_arn = aws_iam_policy.auto-join.arn
 }
 
 resource "aws_iam_instance_profile" "auto-join" {
-  name = "auto-join-${var.region}"
+  name = "auto-join-${var.region}-${var.cluster_name}"
   role = aws_iam_role.auto-join.name
 }
