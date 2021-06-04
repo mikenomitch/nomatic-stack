@@ -177,7 +177,7 @@ variable "retry_join" {
   default = {
     provider  = "aws"
     tag_key   = "ConsulAutoJoin"
-    tag_value = "auto-join-${var.cluster_name}"
+    tag_value_prefix = "auto-join"
   }
 }
 

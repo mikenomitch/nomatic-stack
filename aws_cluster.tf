@@ -2,19 +2,19 @@ locals {
   // general config values
 
   base_config_values = {
-    use_docker          = var.use_docker
-    use_nomad           = var.use_nomad
-    use_consul          = var.use_consul
-    use_consul_template = var.use_consul_template
-    use_vault           = var.use_vault
-    datacenter          = var.region
-    region              = var.region
-    authoritative_region = var.authoritative_region
-    replication_token = var.replication_token
-    retry_provider      = var.retry_join.provider
-    retry_tag_key       = var.retry_join.tag_key
-    retry_tag_value     = var.retry_join.tag_value
-    rpc_port            = var.rpc_port
+    use_docker             = var.use_docker
+    use_nomad              = var.use_nomad
+    use_consul             = var.use_consul
+    use_consul_template    = var.use_consul_template
+    use_vault              = var.use_vault
+    datacenter             = var.region
+    region                 = var.region
+    authoritative_region   = var.authoritative_region
+    replication_token      = var.replication_token
+    retry_provider         = var.retry_join.provider
+    retry_tag_key          = var.retry_join.tag_key
+    retry_tag_value_prefix = "${var.retry_join.tag_value_prefix}-${var.cluster_name}"
+    rpc_port               = var.rpc_port
   }
 
   consul_base_config = merge(local.base_config_values, {
@@ -61,27 +61,27 @@ locals {
 
   consul_server_config = templatefile(
     "${path.module}/templates/consul.sh.tpl",
-    merge(local.consul_base_config, {is_server = true})
+    merge(local.consul_base_config, { is_server = true })
   )
 
   consul_client_config = templatefile(
     "${path.module}/templates/consul.sh.tpl",
-    merge(local.consul_base_config, {is_server = false})
+    merge(local.consul_base_config, { is_server = false })
   )
 
   consul_template_config = templatefile(
     "${path.module}/templates/consul_template.sh.tpl",
-    {consul_template_service_config = local.consul_template_service_config}
+    { consul_template_service_config = local.consul_template_service_config }
   )
 
   nomad_server_config = templatefile(
     "${path.module}/templates/nomad.sh.tpl",
-    merge(local.nomad_base_config, {is_server = true})
+    merge(local.nomad_base_config, { is_server = true })
   )
 
   nomad_client_config = templatefile(
     "${path.module}/templates/nomad.sh.tpl",
-    merge(local.nomad_base_config, {is_server = false})
+    merge(local.nomad_base_config, { is_server = false })
   )
 
   vault_config = templatefile(
@@ -101,7 +101,7 @@ locals {
 }
 
 resource "aws_launch_configuration" "hashistack_server_launch" {
-  name_prefix = "hashistack-server"
+  name_prefix   = "hashistack-server"
   image_id      = var.base_amis[var.region]
   instance_type = var.server_instance_type
   key_name      = var.key_name
@@ -126,7 +126,7 @@ resource "aws_launch_configuration" "hashistack_server_launch" {
 }
 
 resource "aws_launch_configuration" "hashistack_client_launch" {
-  name_prefix = "hashistack-client"
+  name_prefix   = "hashistack-client"
   image_id      = var.base_amis[var.region]
   instance_type = var.client_instance_type
   key_name      = var.key_name
@@ -164,7 +164,7 @@ resource "aws_autoscaling_group" "hashistack_server_asg" {
     },
     {
       key                 = var.retry_join.tag_key
-      value               = var.retry_join.tag_value
+      value               = "${var.retry_join.tag_value_prefix}-${var.cluster_name}"
       propagate_at_launch = true
     }
   ]
@@ -186,7 +186,7 @@ resource "aws_autoscaling_group" "hashistack_client_asg" {
     },
     {
       key                 = var.retry_join.tag_key
-      value               = var.retry_join.tag_value
+      value               = "${var.retry_join.tag_value_prefix}-${var.cluster_name}"
       propagate_at_launch = true
     }
   ]
