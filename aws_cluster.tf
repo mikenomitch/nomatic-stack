@@ -13,7 +13,7 @@ locals {
     replication_token      = var.replication_token
     retry_provider         = var.retry_join.provider
     retry_tag_key          = var.retry_join.tag_key
-    retry_tag_value_prefix = "${var.retry_join.tag_value_prefix}-${var.cluster_name}"
+    retry_tag_value        = "${var.retry_join.tag_value_prefix}-${var.cluster_name}"
     rpc_port               = var.rpc_port
   }
 
