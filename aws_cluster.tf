@@ -141,7 +141,7 @@ resource "aws_route_table_association" "main" {
 
 # INSTANCES & CONFIG
 
-resource "aws_launch_configuration" "hashistack_server_launch" {
+resource "aws_launch_configuration" "server_launch" {
   name_prefix   = "hashistack-server"
   image_id      = var.base_amis[var.region]
   instance_type = var.server_instance_type
@@ -166,7 +166,7 @@ resource "aws_launch_configuration" "hashistack_server_launch" {
   }
 }
 
-resource "aws_launch_configuration" "hashistack_client_launch" {
+resource "aws_launch_configuration" "client_launch" {
   name_prefix   = "hashistack-client"
   image_id      = var.base_amis[var.region]
   instance_type = var.client_instance_type
@@ -191,11 +191,15 @@ resource "aws_launch_configuration" "hashistack_client_launch" {
   }
 }
 
-resource "aws_autoscaling_group" "hashistack_server_asg" {
-  # availability_zones = var.availability_zones[var.region]
+resource "aws_autoscaling_group" "servers" {
   desired_capacity = var.desired_servers
   max_size         = var.max_servers
   min_size         = var.min_servers
+
+  launch_configuration = aws_launch_configuration.server_launch.name
+  vpc_zone_identifier  = aws_subnet.public.*.id
+
+  target_group_arns = [aws_alb_target_group.servers.arn]
 
   tags = [
     {
@@ -209,16 +213,17 @@ resource "aws_autoscaling_group" "hashistack_server_asg" {
       propagate_at_launch = true
     }
   ]
-
-  launch_configuration = aws_launch_configuration.hashistack_server_launch.name
-  vpc_zone_identifier  = aws_subnet.public.*.id
 }
 
-resource "aws_autoscaling_group" "hashistack_client_asg" {
-  # availability_zones = var.availability_zones[var.region]
+resource "aws_autoscaling_group" "clients" {
   desired_capacity = var.desired_clients
   max_size         = var.max_servers
   min_size         = var.min_servers
+
+  launch_configuration = aws_launch_configuration.client_launch.name
+  vpc_zone_identifier  = aws_subnet.public.*.id
+
+  target_group_arns = [aws_alb_target_group.clients.arn]
 
   tags = [
     {
@@ -232,107 +237,102 @@ resource "aws_autoscaling_group" "hashistack_client_asg" {
       propagate_at_launch = true
     }
   ]
-
-  launch_configuration = aws_launch_configuration.hashistack_client_launch.name
-  vpc_zone_identifier  = aws_subnet.public.*.id
 }
 
 # LOAD BALANCING
 
 # LOAD BALANCING - SERVERS
 
-resource "aws_lb" "nomad_servers" {
-  name            = "${var.cluster_name}-nomad-servers"
+resource "aws_alb" "servers" {
+  name            = "${var.cluster_name}-servers"
   security_groups = [aws_security_group.hashistack.id]
   subnets         = aws_subnet.public.*.id
   internal        = false
   idle_timeout    = 60
 }
 
-resource "aws_alb_target_group" "nomad_servers" {
-  name     = "${var.cluster_name}-nomad-servers"
+resource "aws_alb_target_group" "servers" {
+  name     = "${var.cluster_name}-servers"
   port     = 4646
   protocol = "HTTP"
   vpc_id   = aws_vpc.hashistack.id
 
-  stickiness {
-    type            = "lb_cookie"
-    cookie_duration = 1800
-    enabled         = true
-  }
+  # stickiness {
+  #   type            = "lb_cookie"
+  #   cookie_duration = 1800
+  #   enabled         = true
+  # }
 
-  # # TODO: CHANGE HC PATH
   # health_check {
   #   healthy_threshold   = 3
   #   unhealthy_threshold = 10
   #   timeout             = 5
   #   interval            = 10
-  #   path                = "/"
+  #   path                = "/v1/agent/health"
   #   port                = 4646
   # }
 }
 
-resource "aws_lb_listener" "alb_listener_server" {
-  load_balancer_arn = aws_lb.nomad_servers.arn
-  port              = 4646
+resource "aws_alb_listener" "servers" {
+  load_balancer_arn = aws_alb.servers.arn
+  port              = 80
   protocol          = "HTTP"
 
   default_action {
-    target_group_arn = aws_alb_target_group.nomad_servers.arn
     type             = "forward"
+    target_group_arn = aws_alb_target_group.servers.arn
   }
 }
 
-resource "aws_autoscaling_attachment" "asg_attachment_server" {
-  autoscaling_group_name = aws_autoscaling_group.hashistack_server_asg.id
-  alb_target_group_arn   = aws_alb_target_group.nomad_servers.arn
+resource "aws_autoscaling_attachment" "servers" {
+  autoscaling_group_name = aws_autoscaling_group.servers.id
+  alb_target_group_arn   = aws_alb_target_group.servers.arn
 }
 
 # LOAD BALANCING - CLIENTS
 
-resource "aws_lb" "nomad_clients" {
-  name            = "${var.cluster_name}-nomad-clients"
+resource "aws_alb" "clients" {
+  name            = "${var.cluster_name}-clients"
   security_groups = [aws_security_group.hashistack.id]
   subnets         = aws_subnet.public.*.id
   internal        = false
   idle_timeout    = 60
 }
 
-resource "aws_alb_target_group" "nomad_clients" {
-  name     = "${var.cluster_name}-nomad-clients"
+resource "aws_alb_target_group" "clients" {
+  name     = "${var.cluster_name}-clients"
   port     = 4646
   protocol = "HTTP"
   vpc_id   = aws_vpc.hashistack.id
 
-  stickiness {
-    type            = "lb_cookie"
-    cookie_duration = 1800
-    enabled         = true
-  }
+  # stickiness {
+  #   type            = "lb_cookie"
+  #   cookie_duration = 1800
+  #   enabled         = true
+  # }
 
-  # # TODO: CHANGE HC PATH
   # health_check {
   #   healthy_threshold   = 3
   #   unhealthy_threshold = 10
   #   timeout             = 5
   #   interval            = 10
-  #   path                = "/"
+  #   path                = "/v1/agent/health"
   #   port                = 4646
   # }
 }
 
-resource "aws_lb_listener" "alb_listener_client" {
-  load_balancer_arn = aws_lb.nomad_clients.arn
-  port              = 4646
+resource "aws_alb_listener" "clients" {
+  load_balancer_arn = aws_alb.clients.arn
+  port              = 80
   protocol          = "HTTP"
 
   default_action {
-    target_group_arn = aws_alb_target_group.nomad_clients.arn
     type             = "forward"
+    target_group_arn = aws_alb_target_group.clients.arn
   }
 }
 
-resource "aws_autoscaling_attachment" "asg_attachment_clients" {
-  autoscaling_group_name = aws_autoscaling_group.hashistack_client_asg.id
-  alb_target_group_arn   = aws_alb_target_group.nomad_clients.arn
+resource "aws_autoscaling_attachment" "clients" {
+  autoscaling_group_name = aws_autoscaling_group.clients.id
+  alb_target_group_arn   = aws_alb_target_group.clients.arn
 }

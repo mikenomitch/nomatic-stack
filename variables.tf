@@ -89,7 +89,7 @@ variable "rpc_port" {
 
 variable "http_port_from" {
   type    = string
-  default = "4000"
+  default = "80"
 }
 
 variable "http_port_to" {
