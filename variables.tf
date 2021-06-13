@@ -34,7 +34,7 @@ variable "consul_version" {
 
 variable "nomad_version" {
   type    = string
-  default = "1.1.0"
+  default = "1.1.1"
 }
 
 variable "vault_version" {

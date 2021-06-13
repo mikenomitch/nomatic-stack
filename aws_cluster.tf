@@ -199,7 +199,10 @@ resource "aws_autoscaling_group" "servers" {
   launch_configuration = aws_launch_configuration.server_launch.name
   vpc_zone_identifier  = aws_subnet.public.*.id
 
-  target_group_arns = [aws_alb_target_group.servers.arn]
+  target_group_arns = [
+    aws_alb_target_group.nomad_servers.arn,
+    aws_alb_target_group.consul_servers.arn
+  ]
 
   tags = [
     {
@@ -223,7 +226,10 @@ resource "aws_autoscaling_group" "clients" {
   launch_configuration = aws_launch_configuration.client_launch.name
   vpc_zone_identifier  = aws_subnet.public.*.id
 
-  target_group_arns = [aws_alb_target_group.clients.arn]
+  target_group_arns = [
+    aws_alb_target_group.nomad_clients.arn,
+    aws_alb_target_group.consul_clients.arn
+  ]
 
   tags = [
     {
@@ -241,98 +247,184 @@ resource "aws_autoscaling_group" "clients" {
 
 # LOAD BALANCING
 
-# LOAD BALANCING - SERVERS
+# LOAD BALANCING - NOMAD SERVERS
 
-resource "aws_alb" "servers" {
-  name            = "${var.cluster_name}-servers"
+resource "aws_alb" "nomad_servers" {
+  name            = "${var.cluster_name}-nomad-servers"
   security_groups = [aws_security_group.hashistack.id]
   subnets         = aws_subnet.public.*.id
   internal        = false
   idle_timeout    = 60
 }
 
-resource "aws_alb_target_group" "servers" {
-  name     = "${var.cluster_name}-servers"
+resource "aws_alb_target_group" "nomad_servers" {
+  name     = "${var.cluster_name}-nomad-servers"
   port     = 4646
   protocol = "HTTP"
   vpc_id   = aws_vpc.hashistack.id
 
-  # stickiness {
-  #   type            = "lb_cookie"
-  #   cookie_duration = 1800
-  #   enabled         = true
-  # }
-
-  # health_check {
-  #   healthy_threshold   = 3
-  #   unhealthy_threshold = 10
-  #   timeout             = 5
-  #   interval            = 10
-  #   path                = "/v1/agent/health"
-  #   port                = 4646
-  # }
+  health_check {
+    healthy_threshold   = 3
+    unhealthy_threshold = 10
+    timeout             = 5
+    interval            = 10
+    path                = "/v1/agent/health"
+    port                = 4646
+  }
 }
 
-resource "aws_alb_listener" "servers" {
-  load_balancer_arn = aws_alb.servers.arn
+resource "aws_alb_listener" "nomad_servers" {
+  load_balancer_arn = aws_alb.nomad_servers.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_alb_target_group.servers.arn
+    target_group_arn = aws_alb_target_group.nomad_servers.arn
   }
 }
 
-resource "aws_autoscaling_attachment" "servers" {
+resource "aws_autoscaling_attachment" "nomad_servers" {
   autoscaling_group_name = aws_autoscaling_group.servers.id
-  alb_target_group_arn   = aws_alb_target_group.servers.arn
+  alb_target_group_arn   = aws_alb_target_group.nomad_servers.arn
 }
 
-# LOAD BALANCING - CLIENTS
+# LOAD BALANCING - NOMAD CLIENTS
 
-resource "aws_alb" "clients" {
-  name            = "${var.cluster_name}-clients"
+resource "aws_alb" "nomad_clients" {
+  name            = "${var.cluster_name}-nomad-clients"
   security_groups = [aws_security_group.hashistack.id]
   subnets         = aws_subnet.public.*.id
   internal        = false
   idle_timeout    = 60
 }
 
-resource "aws_alb_target_group" "clients" {
-  name     = "${var.cluster_name}-clients"
+resource "aws_alb_target_group" "nomad_clients" {
+  name     = "${var.cluster_name}-nomad-clients"
   port     = 4646
   protocol = "HTTP"
   vpc_id   = aws_vpc.hashistack.id
 
-  # stickiness {
-  #   type            = "lb_cookie"
-  #   cookie_duration = 1800
-  #   enabled         = true
-  # }
-
-  # health_check {
-  #   healthy_threshold   = 3
-  #   unhealthy_threshold = 10
-  #   timeout             = 5
-  #   interval            = 10
-  #   path                = "/v1/agent/health"
-  #   port                = 4646
-  # }
+  health_check {
+    healthy_threshold   = 3
+    unhealthy_threshold = 10
+    timeout             = 5
+    interval            = 10
+    path                = "/v1/agent/health"
+    port                = 4646
+  }
 }
 
-resource "aws_alb_listener" "clients" {
-  load_balancer_arn = aws_alb.clients.arn
+resource "aws_alb_listener" "nomad_clients" {
+  load_balancer_arn = aws_alb.nomad_clients.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_alb_target_group.clients.arn
+    target_group_arn = aws_alb_target_group.nomad_clients.arn
   }
 }
 
-resource "aws_autoscaling_attachment" "clients" {
+resource "aws_autoscaling_attachment" "nomad_clients" {
   autoscaling_group_name = aws_autoscaling_group.clients.id
-  alb_target_group_arn   = aws_alb_target_group.clients.arn
+  alb_target_group_arn   = aws_alb_target_group.nomad_clients.arn
+}
+
+# LOAD BALANCING - CONSUL SERVERS
+
+resource "aws_alb" "consul_servers" {
+  name            = "${var.cluster_name}-consul-servers"
+  security_groups = [aws_security_group.hashistack.id]
+  subnets         = aws_subnet.public.*.id
+  internal        = false
+  idle_timeout    = 60
+}
+
+resource "aws_alb_target_group" "consul_servers" {
+  name     = "${var.cluster_name}-consul-servers"
+  port     = 8500
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.hashistack.id
+
+  health_check {
+    healthy_threshold   = 3
+    unhealthy_threshold = 10
+    timeout             = 5
+    interval            = 10
+    path                = "/v1/status/leader"
+    port                = 8500
+  }
+}
+
+resource "aws_alb_listener" "consul_servers" {
+  load_balancer_arn = aws_alb.consul_servers.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_alb_target_group.consul_servers.arn
+  }
+}
+
+resource "aws_autoscaling_attachment" "consul_servers" {
+  autoscaling_group_name = aws_autoscaling_group.servers.id
+  alb_target_group_arn   = aws_alb_target_group.consul_servers.arn
+}
+
+# LOAD BALANCING - CONSUL CLIENTS
+
+resource "aws_alb" "consul_clients" {
+  name            = "${var.cluster_name}-consul-clients"
+  security_groups = [aws_security_group.hashistack.id]
+  subnets         = aws_subnet.public.*.id
+  internal        = false
+  idle_timeout    = 60
+}
+
+resource "aws_alb_target_group" "consul_clients" {
+  name     = "${var.cluster_name}-consul-clients"
+  port     = 8500
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.hashistack.id
+
+  health_check {
+    healthy_threshold   = 3
+    unhealthy_threshold = 10
+    timeout             = 5
+    interval            = 10
+    path                = "/v1/status/leader"
+    port                = 8500
+  }
+}
+
+resource "aws_alb_listener" "consul_clients" {
+  load_balancer_arn = aws_alb.consul_clients.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_alb_target_group.consul_clients.arn
+  }
+}
+
+resource "aws_autoscaling_attachment" "consul_clients" {
+  autoscaling_group_name = aws_autoscaling_group.clients.id
+  alb_target_group_arn   = aws_alb_target_group.consul_clients.arn
+}
+
+# OUTPUTS
+
+output "nomad_server_url" {
+  value = "http://${aws_alb.nomad_servers.dns_name}"
+}
+
+output "nomad_client_url" {
+  value = "http://${aws_alb.nomad_clients.dns_name}"
+}
+
+output "consul_server_url" {
+  value = "http://${aws_alb.consul_servers.dns_name}"
 }
