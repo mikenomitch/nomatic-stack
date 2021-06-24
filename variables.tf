@@ -97,6 +97,11 @@ variable "http_port_to" {
   default = "65535"
 }
 
+variable "nomad_client_appliicaton_port" {
+  type = number
+  default = 8080
+}
+
 // CIDR
 
 variable "whitelist_ip" {

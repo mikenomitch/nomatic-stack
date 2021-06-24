@@ -464,6 +464,48 @@ resource "aws_autoscaling_attachment" "consul_clients" {
   alb_target_group_arn   = aws_alb_target_group.consul_clients.arn
 }
 
+# LOAD BALANCING - VAULT
+
+resource "aws_alb" "vault" {
+  name            = "${var.cluster_name}-vault"
+  security_groups = [aws_security_group.hashistack.id]
+  subnets         = aws_subnet.public.*.id
+  internal        = false
+  idle_timeout    = 60
+}
+
+resource "aws_alb_target_group" "vault" {
+  name     = "${var.cluster_name}-vault"
+  port     = 8200
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.hashistack.id
+
+  health_check {
+    healthy_threshold   = 3
+    unhealthy_threshold = 10
+    timeout             = 5
+    interval            = 10
+    path                = "/v1/sys/health"
+    port                = 8200
+  }
+}
+
+resource "aws_alb_listener" "vault" {
+  load_balancer_arn = aws_alb.vault.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_alb_target_group.vault.arn
+  }
+}
+
+resource "aws_autoscaling_attachment" "vault" {
+  autoscaling_group_name = aws_autoscaling_group.servers.id
+  alb_target_group_arn   = aws_alb_target_group.vault.arn
+}
+
 # OUTPUTS
 
 output "nomad_server_url" {
@@ -474,6 +516,14 @@ output "nomad_client_url" {
   value = "http://${aws_alb.nomad_clients.dns_name}"
 }
 
+output "nomad_client_lb_url" {
+  value = "http://${aws_alb.nomad_clients_lb.dns_name}"
+}
+
 output "consul_server_url" {
   value = "http://${aws_alb.consul_servers.dns_name}"
+}
+
+output "vault_url" {
+  value = "http://${aws_alb.vault.dns_name}"
 }
