@@ -291,6 +291,17 @@ resource "aws_autoscaling_attachment" "nomad_servers" {
 
 # LOAD BALANCING - NOMAD CLIENTS
 
+# NOTE: The first LB and associated resouces are to get to
+# the Nomad UI on the clients. When attached, this makes TF wait
+# for a healthy state for the client ASG until it completes.
+
+# This might not be necessary, but there may be some reason you
+# would want to get to the Nomad client UI, and I'm keeping it
+# as an easy way to block on the client ASG & Nomad health.
+
+# Scroll down for the other Nomad Client ASG which is meant
+# for exposing load balancers or applications to the public.
+
 resource "aws_alb" "nomad_clients" {
   name            = "${var.cluster_name}-nomad-clients"
   security_groups = [aws_security_group.hashistack.id]
@@ -329,6 +340,44 @@ resource "aws_alb_listener" "nomad_clients" {
 resource "aws_autoscaling_attachment" "nomad_clients" {
   autoscaling_group_name = aws_autoscaling_group.clients.id
   alb_target_group_arn   = aws_alb_target_group.nomad_clients.arn
+}
+
+# NOTE: This load balancer is meant to expose a load balancer
+# on the clients to the general public.
+
+# It does not have a health check associated with it, as
+# the Nomad job to configure a load balances has likely
+# not been deployed yet.
+
+resource "aws_alb" "nomad_clients_lb" {
+  name            = "${var.cluster_name}-nomad-clients-lb"
+  security_groups = [aws_security_group.hashistack.id]
+  subnets         = aws_subnet.public.*.id
+  internal        = false
+  idle_timeout    = 60
+}
+
+resource "aws_alb_target_group" "nomad_clients_lb" {
+  name     = "${var.cluster_name}-nomad-clients-lb"
+  port     = var.nomad_client_appliicaton_port // 8080 default
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.hashistack.id
+}
+
+resource "aws_alb_listener" "nomad_clients_lb" {
+  load_balancer_arn = aws_alb.nomad_clients_lb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_alb_target_group.nomad_clients_lb.arn
+  }
+}
+
+resource "aws_autoscaling_attachment" "nomad_clients_lb" {
+  autoscaling_group_name = aws_autoscaling_group.clients.id
+  alb_target_group_arn   = aws_alb_target_group.nomad_clients_lb.arn
 }
 
 # LOAD BALANCING - CONSUL SERVERS
